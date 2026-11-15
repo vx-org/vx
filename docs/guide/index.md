@@ -38,7 +38,7 @@ vx provides **one tool to manage them all**:
 | Use tools | `vx node index.js` | Hope the right version is active |
 | Switch versions | `vx switch node 20` | `nvm use 20` / `fnm use 20` / edit `.nvmrc` |
 | Team consistency | `vx.toml` in repo | READMEs, wikis, tribal knowledge |
-| CI/CD | `uses: loonghao/vx@main` | Multiple setup-* actions |
+| CI/CD | `uses: vx-org/vx@main` | Multiple setup-* actions |
 
 ## Key Features
 
@@ -50,7 +50,7 @@ vx uvx ruff check .      # Same as uvx ruff check, but auto-installed
 vx go build ./...        # Same as go build, but portable
 ```
 
-### 142 Tools Supported
+### 164 Providers Supported
 From language runtimes to DevOps tools, vx manages them all with a single interface. See the [full tool list](/tools/overview).
 
 ### Declarative Configuration
@@ -111,7 +111,7 @@ Create custom providers via TOML manifests or Rust plugins, and extend functiona
 
 ```bash
 # Install vx
-curl -fsSL https://raw.githubusercontent.com/loonghao/vx/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/vx-org/vx/main/install.sh | bash
 
 # Use any tool immediately — no manual setup
 vx node --version        # v22.x.x

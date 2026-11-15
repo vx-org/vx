@@ -107,43 +107,29 @@ vx uninstall node@18
 
 ### PATH Issues
 
-#### Command Not Found
+#### Plain Command Missing or Resolving to the Wrong Executable
 
-**Symptoms**: `command not found: node` after installation
+First distinguish `vx node --version` from plain `node --version`: installing
+a runtime does not by itself prove the shell can resolve a managed plain command.
+Check `vx --version` and `vx --help`. Only when `shim` is listed, inspect
+`vx shim --help` for `add/list/remove/sync/path`, then use `vx shim path` and
+`vx shim list --json`. Release v0.9.34 does not include this interface.
 
-**Solutions**:
+Check resolution in the failing shell: PowerShell `Get-Command node -All` and
+`where.exe node`; cmd.exe `where node`; Git Bash/POSIX `type -a node` and
+`command -v node`. Substitute the actual exposed name. PowerShell aliases and
+functions can precede PATH; Windows shims need both `.cmd` and extensionless
+variants. `vx shim path` reports default targets, so also inspect each entry's
+recorded directories when `--dir` was used.
 
-```bash
-# Verify vx shim directory is in PATH
-echo $PATH | grep -o ".vx/bin"
+Do not prepend global PATH or add `--force` as a generic repair. Prefer a unique
+`--as` name, or explicit `vx <target>` execution. Before `add` or upgrade `sync`,
+inspect every destination file and its ownership; an `ok`/`complete` listing
+only confirms files exist. Before `remove`, preserve any locally replaced files:
+unmarked replacements survive, but the registry entry is removed.
 
-# Add vx to PATH (add to shell config)
-export PATH="$HOME/.vx/bin:$PATH"
-
-# Or use vx directly
-vx node --version
-
-# Check shim exists
-ls ~/.vx/bin/node
-```
-
-#### Wrong Version in PATH
-
-**Symptoms**: System version takes precedence over vx version
-
-**Solutions**:
-
-```bash
-# Check which executable is being used
-which node
-vx which node
-
-# Reorder PATH (vx should come first)
-export PATH="$HOME/.vx/bin:$PATH"
-
-# Or use vx explicitly
-vx node --version
-```
+Follow the [managed command shim guide](https://github.com/vx-org/vx/blob/main/docs/guide/managed-command-shims.md)
+for Codex, PATH precedence, shell-specific commands, `sync`, and safe removal.
 
 ### Runtime Issues
 
@@ -346,10 +332,11 @@ vx doctor --fix
 
 # Reinstall all tools from vx.toml
 vx sync --force
-
-# Rebuild shims
-vx shim rebuild
 ```
+
+For managed command shims, use the capability and ownership checks in
+[PATH Issues](#path-issues) before `vx shim sync`. It rewrites every registered
+entry; `vx shim rebuild` is not a supported subcommand.
 
 ## Getting Help
 
@@ -374,8 +361,8 @@ cat diagnostics.txt
 
 ### Support Channels
 
-- GitHub Issues: https://github.com/loonghao/vx/issues
-- Documentation: https://github.com/loonghao/vx#readme
+- GitHub Issues: https://github.com/vx-org/vx/issues
+- Documentation: https://github.com/vx-org/vx#readme
 
 ## Quick Triage for AI Agents
 
@@ -384,8 +371,8 @@ When a user reports a vx issue, follow this decision tree:
 ```
 1. "command not found: vx"
    → vx is not installed. Run the install script.
-   → Linux/macOS: curl -fsSL https://raw.githubusercontent.com/loonghao/vx/main/install.sh | bash
-   → Windows: powershell -c "irm https://raw.githubusercontent.com/loonghao/vx/main/install.ps1 | iex"
+   → Linux/macOS: curl -fsSL https://raw.githubusercontent.com/vx-org/vx/main/install.sh | bash
+   → Windows: powershell -c "irm https://raw.githubusercontent.com/vx-org/vx/main/install.ps1 | iex"
 
 2. "Failed to download" / "network error" (exit code 5)
    → Try: vx cache clean && vx install <tool> --verbose
@@ -412,7 +399,7 @@ When a user reports a vx issue, follow this decision tree:
    → Run: vx check to validate syntax
 
 7. CI failing with vx
-   → Ensure the GitHub Action is used: loonghao/vx@main
+   → Ensure the GitHub Action is used: vx-org/vx@main
    → Add github-token for rate limit avoidance
    → Use cache: 'true' for faster CI runs
    → Inspect logs in order: `--json --jq`, capped `vx rg`, then `vx --compact`
@@ -422,3 +409,25 @@ When a user reports a vx issue, follow this decision tree:
    → Run: vx --debug <command> for detailed logs
    → Check: vx cache clean to clear corrupted state
 ```
+
+
+---
+
+## Delivery Surface — External Systems Are Evidence
+
+GitHub PRs, CI runs, and dashboards are **supporting evidence**, not the delivery
+surface. The conclusion has to land where the work is tracked.
+
+- **Record the outcome once, completely** — one issue comment carrying status,
+  branch/commit/PR, what you validated, the blocker, and the next owner.
+- **Verify terminal state, not intermediate state.** A green CI run or an open,
+  review-ready PR is not "shipped". Confirm merged / released / deployed, then
+  record *that*.
+- **Keep public surfaces public-safe.** PR titles, bodies, and commit messages
+  carry technical content only — no internal issue IDs, routing history,
+  reviewer handoffs, local absolute paths, or internal hostnames.
+- **Collect results in the foreground.** A queued or pending state is a handoff,
+  not a completion; never end a turn "standing by" for background work.
+
+Concretely: the delivery surface is the team's issue or task tracker — the
+issue comment plus its metadata. A PR comment alone delivers nothing.

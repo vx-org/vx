@@ -26,7 +26,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::Stdio;
 use tokio::process::Command;
-use tracing::{debug, info, warn};
+use tracing::{debug, info};
 
 use vx_env::ToolEnvironment;
 use vx_paths::global_packages::{GlobalPackage, PackageRegistry};
@@ -137,6 +137,17 @@ impl ShimExecutor {
         // Try to find the package
         if let Some(package) = registry.get(&request.ecosystem, &request.package) {
             debug!("Package found: {:?}", package.name);
+            if package.ecosystem.eq_ignore_ascii_case("uvx") {
+                return self
+                    .execute_uvx_package(
+                        package,
+                        request.version.as_deref().unwrap_or(&package.version),
+                        exe_name,
+                        args,
+                        with_deps,
+                    )
+                    .await;
+            }
             // Package is installed, execute it
             if let Some(exit_code) = self
                 .execute_package_shim_with_deps(package, exe_name, args, with_deps)
@@ -381,6 +392,13 @@ impl ShimExecutor {
             exe_name, package.name, with_deps
         );
 
+        if package.ecosystem.eq_ignore_ascii_case("uvx") {
+            return self
+                .execute_uvx_package(package, &package.version, exe_name, args, with_deps)
+                .await
+                .map(Some);
+        }
+
         // Find the actual executable in the package's install directory
         let target_path = self.find_executable_in_package(package, exe_name);
 
@@ -392,15 +410,12 @@ impl ShimExecutor {
         let target_path = match target_path {
             Some(p) => p,
             None => {
-                // Fall back to shim if direct executable not found
-                if !shims::shim_exists(&self.shims_dir, exe_name) {
-                    warn!(
-                        "Package '{}' provides '{}' but neither direct executable nor shim found",
-                        package.name, exe_name
-                    );
-                    return Ok(None);
-                }
-                shims::get_shim_path(&self.shims_dir, exe_name)
+                // Command shims dispatch back into vx. Falling back to one
+                // would recurse instead of repairing the missing package target.
+                return Err(ShimError::ExecutionFailed(format!(
+                    "Executable '{}' is missing from package '{}:{}'. Reinstall it with `vx pkg install {}:{} --force`.",
+                    exe_name, package.ecosystem, package.name, package.ecosystem, package.name
+                )));
             }
         };
 
@@ -424,6 +439,44 @@ impl ShimExecutor {
             .await?;
 
         Ok(Some(status.code().unwrap_or(1)))
+    }
+
+    /// Execute a command in uv's isolated package environment.
+    ///
+    /// The executable may differ from the package name, including Python itself
+    /// for packages that expose modules without console entry points.
+    async fn execute_uvx_package(
+        &self,
+        package: &GlobalPackage,
+        version: &str,
+        executable: &str,
+        args: &[String],
+        with_deps: &[vx_runtime_core::WithDependency],
+    ) -> ShimResult<i32> {
+        let env = self.build_runtime_environment_with_deps(package, with_deps)?;
+        let current_dir = std::env::current_dir()?;
+        let uv = which::which_in("uv", env.get("PATH"), &current_dir).map_err(|error| {
+            ShimError::Other(anyhow::anyhow!(
+                "uv not found in the prepared package environment: {}",
+                error
+            ))
+        })?;
+        let package_spec = if version == "latest" {
+            package.name.clone()
+        } else {
+            format!("{}=={}", package.name, version)
+        };
+        let status = Command::new(uv)
+            .args(["tool", "run", "--from", &package_spec, executable])
+            .args(args)
+            .envs(&env)
+            .current_dir(current_dir)
+            .stdin(Stdio::inherit())
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .status()
+            .await?;
+        Ok(status.code().unwrap_or(1))
     }
 
     /// Find the executable in the package's install directory

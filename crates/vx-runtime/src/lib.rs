@@ -60,6 +60,7 @@ pub mod region;
 pub mod registry;
 pub mod runtime;
 pub mod shim;
+pub mod shim_registry;
 #[cfg(any(feature = "testing", test))]
 pub mod testing;
 pub mod traits;
@@ -92,7 +93,11 @@ pub use runtime::{
     RuntimeVersioning,
     VerificationResult,
 };
-pub use shim::{Shim, ShimBuilder, ShimType, create_shim};
+pub use shim::{Shim, ShimBuilder, ShimType, VX_SHIM_MARKER, create_shim};
+pub use shim_registry::{
+    CommandShim, ShimRegistry, create_command_shim, create_command_shim_in_home,
+    validate_command_shim_name,
+};
 pub use traits::{
     CommandExecutor, CorePathProvider, FileSystem, HttpClient, Installer, PathProvider,
 };

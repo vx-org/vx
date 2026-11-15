@@ -102,6 +102,32 @@ vx env --json               # Show environment variables
 vx dev --export             # Export shell environment
 ```
 
+## Managed Command Shims
+
+Check `vx --version` and `vx --help` first. If `shim` is listed, inspect
+`vx shim --help` and `vx shim add --help` for this interface; v0.9.34 does not
+include it. Do not probe an unknown subcommand as a runtime on older builds.
+
+```bash
+vx shim path                         # Default targets and their PATH status
+vx shim list --json                   # Recorded names, targets, launcher, directories, files
+# After checking name conflicts and every destination file:
+vx shim add jq --as jq-vx --dir "/absolute/path/to/shim-bin"
+vx shim remove jq-vx                  # Remove by exposed name, not runtime spec
+```
+
+`--dir` is repeatable and replaces the defaults; use absolute paths so later
+`sync`/`remove` do not depend on the working directory. Without it, `add` writes to
+both the vx bin directory and the directory containing the current vx executable
+(deduplicated). Adding a shim does not install its target or edit PATH.
+
+After upgrading or moving vx, use `vx shim sync` only after checking ownership
+of every registered destination: it rewrites all entries, including existing
+files. `--force` is an explicit overwrite decision, never the default repair.
+For Codex targets, shell-specific resolution, conflicts, and safe removal, read
+the [managed command shim guide](https://github.com/vx-org/vx/blob/main/docs/guide/managed-command-shims.md).
+There is no `vx shim rebuild` or `vx shim codex` form in this interface.
+
 ## Output Formats
 
 ### JSON Format
@@ -249,3 +275,25 @@ vx cache clean              # Clean cache
 - `5` - Network error
 - `6` - Permission error
 - `7` - Configuration error
+
+
+---
+
+## Delivery Surface — External Systems Are Evidence
+
+GitHub PRs, CI runs, and dashboards are **supporting evidence**, not the delivery
+surface. The conclusion has to land where the work is tracked.
+
+- **Record the outcome once, completely** — one issue comment carrying status,
+  branch/commit/PR, what you validated, the blocker, and the next owner.
+- **Verify terminal state, not intermediate state.** A green CI run or an open,
+  review-ready PR is not "shipped". Confirm merged / released / deployed, then
+  record *that*.
+- **Keep public surfaces public-safe.** PR titles, bodies, and commit messages
+  carry technical content only — no internal issue IDs, routing history,
+  reviewer handoffs, local absolute paths, or internal hostnames.
+- **Collect results in the foreground.** A queued or pending state is a handoff,
+  not a completion; never end a turn "standing by" for background work.
+
+Concretely: the delivery surface is the team's issue or task tracker — the
+issue comment plus its metadata. A PR comment alone delivers nothing.

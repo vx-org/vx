@@ -87,6 +87,9 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Validate installer CI contract
+        run: python3 -m unittest discover -s scripts/tests -p "test_installer_extended_formats_workflow.py" -v
+
       - name: Detect file changes
         id: filter
         shell: bash
@@ -739,6 +742,21 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-vx-tools-test-
 
+      # The Go E2E group resolves Go through `go=@system`, i.e. whatever Go the
+      # runner image happens to leave on PATH. Those images are not guaranteed to
+      # ship a complete toolchain: two lanes (`go::test_go_vet`,
+      # `go::test_go_run_syntax_error`) failed with `go: no such tool "vet" /
+      # "compile"`, meaning `$GOROOT/pkg/tool/$GOOS_$GOARCH/` was missing files on
+      # that host while the same tests passed on earlier runs of the same image.
+      # Installing a pinned Go makes the toolchain a declared input instead of an
+      # incidental one, so the suite keeps its only hard Go assertions.
+      - name: Setup Go
+        if: runner.os == 'Linux'
+        uses: actions/setup-go@v7
+        with:
+          go-version: '1.27.1'
+          cache: false
+
       - name: Setup Rust + sccache
         uses: ./.github/actions/setup-rust-sccache
         with:
@@ -755,6 +773,7 @@ jobs:
           cargo nextest run --no-fail-fast ${{ needs.detect-changes.outputs.test_packages }}
         env:
           CARGO_TARGET_DIR: target
+          VX_BINARY: ${{ github.workspace }}/bin/${{ matrix.platform.binary }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Report flaky tests
@@ -888,8 +907,22 @@ jobs:
           shared-key: test
           install-nextest: "true"
 
-      - name: Preinstall Node.js on Windows
-        if: runner.os == 'Windows'
+      # Same reason as in `test-targeted`: pin a complete Go toolchain instead of
+      # relying on the runner image's incidental install.
+      - name: Setup Go
+        if: runner.os == 'Linux'
+        uses: actions/setup-go@v7
+        with:
+          go-version: '1.27.1'
+          cache: false
+
+      # Node is preinstalled so the `node` / `cross_tool` e2e groups never race
+      # to download a toolchain. Every one of those tests spawns `vx node ...`
+      # with a 300s per-test timeout, so a stalled download on an unprimed
+      # runner fails the test instead of the product. Windows already did this;
+      # Linux did not, and on the run that motivated this change the Linux job
+      # logged 14 such timeouts while the Windows job logged none.
+      - name: Preinstall Node.js
         shell: bash
         run: vx node --version
 
@@ -898,6 +931,7 @@ jobs:
         run: cargo nextest run --workspace --no-fail-fast
         env:
           CARGO_TARGET_DIR: target
+          VX_BINARY: ${{ github.workspace }}/bin/${{ matrix.platform.binary }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Report flaky tests
@@ -909,6 +943,75 @@ jobs:
         run: |
           if command -v python3 >/dev/null 2>&1; then PY=python3; else PY=python; fi
           "$PY" scripts/summarize_nextest_flaky.py --junit target/nextest/default/junit.xml
+
+  # The default workspace suite does not enable extended-formats. Keep the
+  # archive safety/functional regressions independent of the network-heavy CLI
+  # suite and coverage, so a timeout there cannot hide an untested installer.
+  test-installer-extended-formats:
+    name: Installer extended formats (${{ matrix.platform.name }})
+    runs-on: ${{ matrix.platform.os }}
+    needs: [detect-changes, build-vx]
+    if: needs.detect-changes.outputs.should_test == 'true'
+    timeout-minutes: 25
+    env:
+      RUSTC_WRAPPER: sccache
+      SCCACHE_DIR: ${{ github.workspace }}/.cache/sccache
+
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - name: Linux
+            os: ubuntu-latest
+            artifact: vx-linux-x64
+            binary: vx
+          - name: Windows
+            os: windows-latest
+            artifact: vx-windows-x64
+            binary: vx.exe
+          - name: macOS
+            os: macos-latest
+            artifact: vx-macos-x64
+            binary: vx
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Download vx binary
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ matrix.platform.artifact }}
+          path: ./bin
+
+      - name: Setup vx
+        shell: bash
+        run: |
+          chmod +x ./bin/${{ matrix.platform.binary }} 2>/dev/null || true
+          echo "${{ github.workspace }}/bin" >> $GITHUB_PATH
+
+      - name: Setup Rust + sccache
+        uses: ./.github/actions/setup-rust-sccache
+        with:
+          shared-key: installer-extended-formats
+          install-nextest: "true"
+
+      - name: Run native 7z and SFX regressions
+        shell: bash
+        # This runs the real extractor against generated archives, including
+        # traversal rejection on all three OSes and symlink rejection on Unix.
+        # Fail if feature/configuration drift leaves zero tests selected, and do
+        # not turn a filesystem-safety regression into a pass through retries.
+        run: >-
+          vx cargo nextest run --locked -p vx-installer
+          --features extended-formats --test sevenz_sfx_tests
+          --no-fail-fast --no-tests fail --retries 0
+
+      - name: Run public archive 7z path regressions
+        shell: bash
+        run: >-
+          vx cargo nextest run --locked -p vx-runtime-archive
+          --features extended-formats --test sevenz_path_tests
+          --no-fail-fast --no-tests fail --retries 0
 
   # ============================================================================
   # Stage 5: Cross-compilation (PR only, skip on main since release builds cover it)
@@ -1137,6 +1240,7 @@ jobs:
       - code-quality
       - test-targeted
       - test-full
+      - test-installer-extended-formats
       - provider-static
       - cross-build
       - security-audit
@@ -1200,6 +1304,16 @@ jobs:
           check_job "build-vx" "${{ needs.build-vx.result }}"
           check_job "code-quality" "${{ needs.code-quality.result }}"
           check_job "test-targeted" "${{ needs.test-targeted.result }}"
+
+          # Once Rust/CI changes select installer regressions, skipped is not a
+          # pass either: all three native matrix legs must have actually run.
+          if [[ "${{ needs.detect-changes.outputs.should_test }}" == "true" &&
+                "${{ needs.test-installer-extended-formats.result }}" != "success" ]]; then
+            echo "- ❌ test-installer-extended-formats (required but not successful)" >> $GITHUB_STEP_SUMMARY
+            failed=1
+          else
+            check_job "test-installer-extended-formats" "${{ needs.test-installer-extended-formats.result }}"
+          fi
           check_job "provider-static" "${{ needs.provider-static.result }}"
           check_job "security-audit" "${{ needs.security-audit.result }}"
 

@@ -14,7 +14,7 @@ hero:
       link: /guide/getting-started
     - theme: alt
       text: View on GitHub
-      link: https://github.com/loonghao/vx
+      link: https://github.com/vx-org/vx
 
 features:
   - title: Zero Configuration
@@ -28,7 +28,7 @@ features:
   - title: Blazing Fast
     details: Written in Rust for maximum performance and minimal overhead.
   - title: Extensible
-    details: 142 tools via Starlark DSL providers. Add custom tools declaratively.
+    details: 164 Providers defined in Starlark DSL. Add custom runtimes declaratively.
 ---
 
 ## The Problem We Solve
@@ -62,11 +62,11 @@ vx go run main.go               # Auto-installs Go if needed
 ::: code-group
 
 ```bash [Linux/macOS]
-curl -fsSL https://raw.githubusercontent.com/loonghao/vx/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/vx-org/vx/main/install.sh | bash
 ```
 
 ```powershell [Windows]
-irm https://raw.githubusercontent.com/loonghao/vx/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/vx-org/vx/main/install.ps1 | iex
 ```
 
 :::

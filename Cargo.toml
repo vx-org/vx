@@ -135,13 +135,13 @@ rstest = "0.27"
 
 
 [workspace.package]
-version = "0.9.33"                                                # x-release-please-version
+version = "0.9.37"                                                # x-release-please-version
 edition = "2024"
 description = "Universal Development Tool Manager"
 license = "MIT"
-repository = "https://github.com/loonghao/vx"
-homepage = "https://github.com/loonghao/vx"
-documentation = "https://github.com/loonghao/vx"
+repository = "https://github.com/vx-org/vx"
+homepage = "https://github.com/vx-org/vx"
+documentation = "https://github.com/vx-org/vx"
 authors = ["Hal <hal.long@outlook.com>"]
 keywords = ["version", "manager", "development", "tools", "cli"]
 categories = ["command-line-utilities", "development-tools"]

@@ -374,8 +374,8 @@ cat diagnostics.txt
 
 ### Support Channels
 
-- GitHub Issues: https://github.com/loonghao/vx/issues
-- Documentation: https://github.com/loonghao/vx#readme
+- GitHub Issues: https://github.com/vx-org/vx/issues
+- Documentation: https://github.com/vx-org/vx#readme
 
 ## Quick Triage for AI Agents
 
@@ -384,8 +384,8 @@ When a user reports a vx issue, follow this decision tree:
 ```
 1. "command not found: vx"
    → vx is not installed. Run the install script.
-   → Linux/macOS: curl -fsSL https://raw.githubusercontent.com/loonghao/vx/main/install.sh | bash
-   → Windows: powershell -c "irm https://raw.githubusercontent.com/loonghao/vx/main/install.ps1 | iex"
+   → Linux/macOS: curl -fsSL https://raw.githubusercontent.com/vx-org/vx/main/install.sh | bash
+   → Windows: powershell -c "irm https://raw.githubusercontent.com/vx-org/vx/main/install.ps1 | iex"
 
 2. "Failed to download" / "network error" (exit code 5)
    → Try: vx cache clean && vx install <tool> --verbose
@@ -412,7 +412,7 @@ When a user reports a vx issue, follow this decision tree:
    → Run: vx check to validate syntax
 
 7. CI failing with vx
-   → Ensure the GitHub Action is used: loonghao/vx@main
+   → Ensure the GitHub Action is used: vx-org/vx@main
    → Add github-token for rate limit avoidance
    → Use cache: 'true' for faster CI runs
    → Inspect logs in order: `--json --jq`, capped `vx rg`, then `vx --compact`

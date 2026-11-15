@@ -38,7 +38,7 @@ vx 提供**一个工具管理所有**：
 | 使用工具 | `vx node index.js` | 祈祷激活了正确的版本 |
 | 切换版本 | `vx switch node 20` | `nvm use 20` / `fnm use 20` / 编辑 `.nvmrc` |
 | 团队一致性 | 仓库中的 `vx.toml` | README、wiki、口口相传 |
-| CI/CD | `uses: loonghao/vx@main` | 多个 setup-* actions |
+| CI/CD | `uses: vx-org/vx@main` | 多个 setup-* actions |
 
 ## 核心特性
 
@@ -50,7 +50,7 @@ vx uvx ruff check .      # 和 uvx ruff check 一样，但自动安装
 vx go build ./...        # 和 go build 一样，但可移植
 ```
 
-### 142 工具支持
+### 164 个 Provider
 从语言运行时到 DevOps 工具，vx 用统一接口管理所有工具。查看[完整工具列表](/zh/tools/overview)。
 
 ### 声明式配置
@@ -111,7 +111,7 @@ lint = "vx uvx ruff check . {{args}}"
 
 ```bash
 # 安装 vx
-curl -fsSL https://raw.githubusercontent.com/loonghao/vx/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/vx-org/vx/main/install.sh | bash
 
 # 立即使用任何工具 — 无需手动设置
 vx node --version        # v22.x.x

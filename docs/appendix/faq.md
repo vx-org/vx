@@ -12,7 +12,7 @@ vx is a universal development tool manager that provides a zero learning curve e
 |---------|-----|------|------|-------|
 | Zero learning curve | ✅ | ❌ | ❌ | ❌ |
 | Auto-install on use | ✅ | ❌ | ✅ | ✅ |
-| 142 built-in tools | ✅ | Plugins | ✅ | Limited |
+| 164 built-in Providers | ✅ | Plugins | ✅ | Limited |
 | Declarative config | ✅ | ✅ | ✅ | ✅ |
 | Native Windows | ✅ | ❌ | ✅ | ✅ |
 | Script system | ✅ | ❌ | ✅ | ❌ |
@@ -127,7 +127,7 @@ Bash, Zsh, Fish, and PowerShell.
 ### How do I use vx in GitHub Actions?
 
 ```yaml
-- uses: loonghao/vx@main
+- uses: vx-org/vx@main
   with:
     tools: node@22 python@3.12
 ```
@@ -184,5 +184,5 @@ See the [Extension Development Guide](/advanced/extension-development).
 ## More Help
 
 - [Troubleshooting](/appendix/troubleshooting)
-- [GitHub Issues](https://github.com/loonghao/vx/issues)
+- [GitHub Issues](https://github.com/vx-org/vx/issues)
 - [Contributing](/advanced/contributing)

@@ -9,6 +9,7 @@
 
 use crate::commands::{
     CommandContext, CommandHandler, GlobalOptions, env::EnvCommand, global::GlobalCommand,
+    shim::ShimCommand,
 };
 
 use anyhow::Result;
@@ -974,6 +975,28 @@ pub enum Commands {
         #[arg(long, short = 'c', conflicts_with_all = &["all"])]
         commands: bool,
     },
+
+    // =========================================================================
+    // Direct command access (RFC 0042)
+    // =========================================================================
+    /// Manage command shims that expose runtimes as plain commands
+    ///
+    /// A shim is a small platform-specific wrapper that forwards to
+    /// `vx <runtime>`, so `jq --version` runs instead of `vx jq --version`.
+    /// Shims are generated per platform: Windows gets a `.cmd` batch file for
+    /// cmd.exe/PowerShell plus a shell script for Git Bash, Unix gets a single
+    /// shell script.
+    ///
+    /// Examples:
+    ///   vx shim add jq                  # create `jq`
+    ///   vx shim add git@2.53.0 --as git # pin a version behind an existing name
+    ///   vx shim add jq --dir ~/.local/bin
+    ///   vx shim list
+    ///   vx shim remove jq
+    Shim {
+        #[command(subcommand)]
+        command: ShimCommand,
+    },
 }
 
 // =============================================================================
@@ -1505,8 +1528,16 @@ pub enum AiCommand {
         force: bool,
     },
 
-    /// Check whether project-recorded vx skills are up to date
-    Check,
+    /// Check whether vx skills are up to date in both scopes
+    ///
+    /// Verifies the global install (and its recorded hash) plus the current
+    /// project. Use --fix to refresh stale copies, remove project-local
+    /// duplicates of the global skills, and re-record hashes.
+    Check {
+        /// Refresh stale skills and drop byte-identical project-local copies
+        #[arg(long)]
+        fix: bool,
+    },
 
     /// List supported AI agents and their config paths
     Agents,
@@ -1751,6 +1782,7 @@ impl CommandHandler for Commands {
             Commands::Ai { .. } => "ai",
             Commands::Provider { .. } => "provider",
             Commands::Schema { .. } => "schema",
+            Commands::Shim { .. } => "shim",
         }
     }
 
@@ -1958,6 +1990,7 @@ impl CommandHandler for Commands {
             }
 
             Commands::Global { command } => commands::global::handle(ctx, command).await,
+            Commands::Shim { command } => commands::shim::handle(ctx, command).await,
 
             Commands::Test {
                 runtime,
@@ -2400,7 +2433,7 @@ impl CommandHandler for Commands {
                     project,
                     force,
                 } => commands::ai::handle_setup(agent, *global, *project, *force).await,
-                AiCommand::Check => commands::ai::handle_check().await,
+                AiCommand::Check { fix } => commands::ai::handle_check(*fix).await,
                 AiCommand::Agents => commands::ai::handle_agents().await,
                 AiCommand::Skills { args } => commands::ai::handle_skills(ctx, args).await,
                 AiCommand::Context { minimal } => {

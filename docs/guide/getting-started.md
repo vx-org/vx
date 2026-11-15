@@ -11,11 +11,11 @@ Get up and running with vx in 5 minutes.
 
 ::: code-group
 ```bash [Linux / macOS]
-curl -fsSL https://raw.githubusercontent.com/loonghao/vx/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/vx-org/vx/main/install.sh | bash
 ```
 
 ```powershell [Windows (PowerShell)]
-irm https://raw.githubusercontent.com/loonghao/vx/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/vx-org/vx/main/install.ps1 | iex
 ```
 
 ```bash [Cargo]
@@ -194,4 +194,4 @@ all = "just dev"
 - [Core Concepts](/guide/concepts) — Understand providers, runtimes, and versions
 - [Configuration](/guide/configuration) — Deep dive into `vx.toml`
 - [CLI Reference](/cli/overview) — Explore all available commands
-- [Supported Tools](/tools/overview) — See the full list of 142 tools
+- [Supported Tools](/tools/overview) — See the full list of 164 Providers

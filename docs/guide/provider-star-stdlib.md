@@ -338,7 +338,10 @@ url = github_asset_url("BurntSushi", "ripgrep", "14.1.1",
 | `set_permissions(path, mode="755")` | `→ descriptor` | Set file permissions |
 | `ensure_dependencies(package_manager, check_file, lock_file, install_dir)` | `→ descriptor` | Ensure package deps |
 | `run_command(executable, args, working_dir, env, on_failure="warn")` | `→ descriptor` | Run arbitrary command |
+| `run_nsis_installer(executable, install_dir)` | `→ descriptor` | Windows only: silent current-user NSIS install to an absolute destination; preserves unquoted final `/D=` paths with spaces and fails on installer errors |
 | `flatten_dir(pattern, keep_subdirs)` | `→ descriptor` | Flatten directory structure |
+
+`run_command` actions in `post_extract` stream their output to stderr, keeping structured CLI stdout valid. Set `on_failure="error"` when installation requires the command to succeed. After the hook, `get_execute_path` identifies the final application executable used by installation checks.
 
 ---
 

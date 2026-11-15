@@ -2,7 +2,7 @@
 
 #![allow(dead_code)]
 
-use std::io::{self, ErrorKind};
+use std::io::{self, ErrorKind, Read, Seek};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 use std::sync::Once;
@@ -63,37 +63,25 @@ pub fn binary_name() -> &'static str {
 
 /// Get the vx binary path
 pub fn vx_binary() -> PathBuf {
-    // Check VX_BINARY environment variable first (for CI artifact-based testing)
-    if let Ok(path) = std::env::var("VX_BINARY") {
-        let p = PathBuf::from(&path);
-        if p.exists() {
-            return p;
-        }
+    if let Some(path) = std::env::var_os("VX_BINARY") {
+        let path = std::fs::canonicalize(path).expect("VX_BINARY must name an existing binary");
+        assert!(path.is_file(), "VX_BINARY must name a file");
+        return path;
     }
 
-    let cargo_target = std::env::var("CARGO_TARGET_DIR")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| PathBuf::from("target"));
-
-    // Check release build first (CI uses release)
-    let release_binary = cargo_target.join("release").join(binary_name());
-    if release_binary.exists() {
-        return release_binary;
+    // vx-cli is a library; the workspace binary shares the test profile directory.
+    let mut path = std::env::current_exe().expect("test executable must have a path");
+    path.pop();
+    if path.ends_with("deps") {
+        path.pop();
     }
-
-    // Check debug build
-    let debug_binary = cargo_target.join("debug").join(binary_name());
-    if debug_binary.exists() {
-        return debug_binary;
-    }
-
-    // Fall back to system PATH
-    PathBuf::from(binary_name())
+    path.push(binary_name());
+    path
 }
 
-/// Check if vx binary is available
+/// Check if the selected vx binary is available
 pub fn vx_available() -> bool {
-    vx_binary().exists() || Command::new("vx").arg("--version").output().is_ok()
+    vx_binary().is_file()
 }
 
 // ============================================================================
@@ -127,9 +115,12 @@ pub fn run_vx_with_env(args: &[&str], env: &[(&str, &str)]) -> std::io::Result<O
 /// Run a command with a timeout so external tools cannot hang the whole E2E suite.
 pub fn run_command_with_timeout(mut cmd: Command, timeout: Duration) -> io::Result<Output> {
     let command_debug = format!("{cmd:?}");
+    // File captures prevent a verbose child from blocking on a full pipe before exit.
+    let mut stdout = tempfile::tempfile()?;
+    let mut stderr = tempfile::tempfile()?;
     cmd.stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
+        .stdout(stdout.try_clone()?)
+        .stderr(stderr.try_clone()?);
 
     configure_timeout_child(&mut cmd);
 
@@ -138,8 +129,17 @@ pub fn run_command_with_timeout(mut cmd: Command, timeout: Duration) -> io::Resu
     let start = Instant::now();
 
     loop {
-        if child.try_wait()?.is_some() {
-            return child.wait_with_output();
+        if let Some(status) = child.try_wait()? {
+            stdout.rewind()?;
+            stderr.rewind()?;
+            let mut output = Output {
+                status,
+                stdout: Vec::new(),
+                stderr: Vec::new(),
+            };
+            stdout.read_to_end(&mut output.stdout)?;
+            stderr.read_to_end(&mut output.stderr)?;
+            return Ok(output);
         }
 
         if start.elapsed() >= timeout {
@@ -151,6 +151,18 @@ pub fn run_command_with_timeout(mut cmd: Command, timeout: Duration) -> io::Resu
 
             if let Err(err) = wait_after_timeout(&mut child, Duration::from_secs(2)) {
                 message.push_str(&format!("\nfailed to reap child after timeout: {err}"));
+            }
+
+            for (stream, file) in [("stdout", &mut stdout), ("stderr", &mut stderr)] {
+                if file.rewind().is_ok() {
+                    let mut bytes = Vec::new();
+                    if file.take(16 * 1024).read_to_end(&mut bytes).is_ok() && !bytes.is_empty() {
+                        message.push_str(&format!(
+                            "\n{stream} (first 16 KiB):\n{}",
+                            String::from_utf8_lossy(&bytes)
+                        ));
+                    }
+                }
             }
 
             return Err(io::Error::new(ErrorKind::TimedOut, message));

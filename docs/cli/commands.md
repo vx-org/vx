@@ -102,6 +102,22 @@ vx global uninstall typescript     # Uninstall
 
 [Full documentation →](./global)
 
+### shim
+
+Expose a runtime as a plain command, so `jq --version` works instead of
+`vx jq --version`. Shims are generated per platform.
+
+```bash
+vx shim add jq                    # create a `jq` command
+vx shim add git@2.53.0            # pin a version behind the runtime name
+vx shim add jq --dir ~/.local/bin # choose the directory
+vx shim list                      # show shims created by vx
+vx shim sync                      # rewrite shims after upgrading vx
+vx shim remove jq                 # delete a shim
+```
+
+[Full documentation →](./shim)
+
 ---
 
 ## Project Management
@@ -343,10 +359,20 @@ Manage AI-agent skills and project context.
 vx ai setup                # Install/update vx skills globally (default)
 vx ai setup --project      # Install project-local skills and record hash in vx.toml
 vx ai setup --project --force  # Refresh project-local skills
-vx ai check                # Check project skills hash against embedded skills
+vx ai check                # Check skills in both scopes (global + project)
+vx ai check --fix          # Refresh stale copies, drop redundant project copies
 vx ai agents               # List supported AI agents
 vx ai context              # Generate AI-friendly project context
 ```
+
+Skills are global by default: `vx ai setup` installs them once per machine and
+records the hash in `~/.vx/ai-skills.toml`. Prefer that over project-local
+copies — see the `vx-repo-contract` skill.
+
+`vx ai agents` also reports a `VX RUNTIME` column: agents that vx can install
+and run are listed with their `vx <agent>` command (e.g. `codex`, `claude`,
+`kimi`). Installing one globally puts a shim on `PATH`, so the agent is
+discoverable without the `vx` prefix — see [AI Coding Agents](/tools/ai#ai-coding-agents).
 
 ### cache
 
