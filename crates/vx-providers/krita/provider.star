@@ -1,3 +1,5 @@
+load("@vx//stdlib:rez.star", "rez_bundle_source")
+
 load("@vx//stdlib:provider.star", "runtime_def", "github_permissions", "fetch_versions_from_api", "system_install_strategies", "winget_install", "pkg_strategy", "apt_install")
 load("@vx//stdlib:env.star", "env_prepend")
 
@@ -57,3 +59,21 @@ def get_execute_path(ctx, _version):
 
 def environment(ctx, _version):
     return [env_prepend("PATH", ctx.install_dir + "/bin")]
+# ---------------------------------------------------------------------------
+# Rez Next SDK provider descriptor
+#
+# The descriptor is ready for the provider's immutable Rez bundle release.
+# Existing provider installation remains authoritative until that release is
+# published, keeping migration independent from bundle publication order.
+# ---------------------------------------------------------------------------
+
+_REZ_SDK = rez_bundle_source(
+    "vx-org",
+    "vx-rez-packages",
+    "krita",
+    published = False,
+)
+rez_fetch_versions = _REZ_SDK["fetch_versions"]
+rez_download_url = _REZ_SDK["download_url"]
+rez_install_layout = _REZ_SDK["install_layout"]
+rez_bundle = _REZ_SDK["rez_bundle"]

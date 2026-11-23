@@ -29,16 +29,26 @@ def _unsupported_reason(ctx, tool, unsupported_targets):
         ctx.platform.arch,
     )
 
-def rez_bundle_source(owner, repo, tool, targets, unsupported_targets = {},
+_DEFAULT_TARGETS = {
+    "windows/x64": "x86_64-pc-windows-msvc",
+    "windows/arm64": "aarch64-pc-windows-msvc",
+    "linux/x64": "x86_64-unknown-linux-gnu",
+    "linux/arm64": "aarch64-unknown-linux-gnu",
+    "macos/x64": "x86_64-apple-darwin",
+    "macos/arm64": "aarch64-apple-darwin",
+}
+
+def rez_bundle_source(owner, repo, tool, targets = None, unsupported_targets = {},
                       programs = {}, versions_url = None,
                       bundle_schema_version = 1, published = True):
     """Create provider functions for immutable Rez package bundle releases.
 
     `targets` maps either a vx `os/arch` pair or an exact target triple to the
-    release asset triple. `unsupported_targets` uses the same keys and stores
-    user-facing reasons. The returned `rez_bundle` function is consumed by the
-    vx runtime adapter bridge; the remaining functions work with the ordinary
-    provider download/install pipeline.
+    release asset triple. When omitted, the common native 64-bit target map is
+    used. `unsupported_targets` uses the same keys and stores user-facing
+    reasons. The returned `rez_bundle` function is consumed by the vx runtime
+    adapter bridge; the remaining functions work with the ordinary provider
+    download/install pipeline.
 
     Set `published = False` while no release exists yet. The runtime bridge
     asks every provider for a bundle, so leaving it enabled would make vx try
@@ -49,6 +59,7 @@ def rez_bundle_source(owner, repo, tool, targets, unsupported_targets = {},
             owner,
             repo,
         )
+    target_map = targets if targets != None else _DEFAULT_TARGETS
 
     def fetch_versions(_ctx):
         return {
@@ -60,7 +71,7 @@ def rez_bundle_source(owner, repo, tool, targets, unsupported_targets = {},
 
     def download_url(ctx, version):
         unsupported_reason = _lookup_target(ctx, unsupported_targets)
-        triple = _lookup_target(ctx, targets)
+        triple = _lookup_target(ctx, target_map)
         platform_key = "{}/{}".format(ctx.platform.os, ctx.platform.arch)
         if unsupported_reason or not triple:
             return {

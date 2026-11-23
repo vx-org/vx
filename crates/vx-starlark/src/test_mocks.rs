@@ -1393,7 +1393,7 @@ def releases_to_versions(releases):
     return []
 
 # --- rez.star ---
-def rez_bundle_source(owner, repo, tool, targets, unsupported_targets = {{}},
+def rez_bundle_source(owner, repo, tool, targets = None, unsupported_targets = {{}},
                       programs = {{}}, versions_url = None, bundle_schema_version = 1,
                       published = True):
     def fetch_versions(_ctx):
