@@ -147,6 +147,7 @@ fn test_dcc_tag_sources_request_only_numeric_release_versions(
         descriptor["url"],
         format!("https://api.github.com/repos/{repository}/tags?per_page=100")
     );
+    assert_eq!(descriptor["exclude_versions"], json!(["6.0.5"]));
 }
 
 #[rstest]

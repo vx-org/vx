@@ -342,6 +342,20 @@ impl StarlarkProvider {
                 ));
             }
         };
+        let excluded_versions: Vec<&str> = match descriptor.get("exclude_versions") {
+            None => Vec::new(),
+            Some(serde_json::Value::Array(versions)) => versions
+                .iter()
+                .map(|version| {
+                    version.as_str().filter(|s| !s.is_empty()).ok_or_else(|| {
+                        Error::EvalError("exclude_versions must contain nonempty strings".into())
+                    })
+                })
+                .collect::<Result<_>>()?,
+            Some(_) => {
+                return Err(Error::EvalError("exclude_versions must be an array".into()));
+            }
+        };
 
         debug!(
             provider = %self.meta.name,
@@ -361,6 +375,11 @@ impl StarlarkProvider {
                     filter_json_versions(versions, version_filter)
                         .into_iter()
                         .filter(|v| !excluded_suffixes.iter().any(|s| v.version.ends_with(s)))
+                        .filter(|v| {
+                            !excluded_versions
+                                .iter()
+                                .any(|version| v.version == *version)
+                        })
                         .collect()
                 });
         }
@@ -452,6 +471,11 @@ impl StarlarkProvider {
         Ok(filter_json_versions(versions, version_filter)
             .into_iter()
             .filter(|v| !excluded_suffixes.iter().any(|s| v.version.ends_with(s)))
+            .filter(|v| {
+                !excluded_versions
+                    .iter()
+                    .any(|version| v.version == *version)
+            })
             .collect())
     }
 

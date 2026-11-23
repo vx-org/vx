@@ -1,9 +1,6 @@
 //! Pure Starlark logic tests for duckdb provider.star
 //!
-//! DuckDB uses an unusual asset naming scheme:
-//!   - Linux:   duckdb_cli-linux-{arch}.zip
-//!   - macOS:   duckdb_cli-osx-universal.gz  (universal binary)
-//!   - Windows: duckdb_cli-windows-{arch}.zip
+//! DuckDB changed its CLI asset naming scheme in version 2.0.
 
 use starlark::assert::Assert;
 use starlark::syntax::Dialect;
@@ -92,6 +89,36 @@ fn test_download_url_macos_is_zip() {
 ctx = struct(platform = struct(os = "macos", arch = "arm64", target = ""))
 url = download_url(ctx, "1.2.0")
 url != None and "osx" in url and url.endswith(".zip")
+"#,
+        provider_star_prefix()
+    ));
+}
+
+#[test]
+fn test_download_url_v2_uses_current_unix_asset_name() {
+    let mut a = Assert::new();
+    a.dialect(&Dialect::Standard);
+    a.is_true(&format!(
+        r#"
+{}
+ctx = struct(platform = struct(os = "linux", arch = "x64", target = ""))
+url = download_url(ctx, "2.0.1")
+url.endswith("duckdb-cli-linux-amd64.tar.gz")
+"#,
+        provider_star_prefix()
+    ));
+}
+
+#[test]
+fn test_download_url_v2_uses_windows_zip_asset_name() {
+    let mut a = Assert::new();
+    a.dialect(&Dialect::Standard);
+    a.is_true(&format!(
+        r#"
+{}
+ctx = struct(platform = struct(os = "windows", arch = "x64", target = ""))
+url = download_url(ctx, "2.0.1")
+url.endswith("duckdb-cli-windows-amd64.zip")
 "#,
         provider_star_prefix()
     ));

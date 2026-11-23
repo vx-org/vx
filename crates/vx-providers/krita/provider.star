@@ -20,6 +20,9 @@ _fetch_tags = fetch_versions_from_api("https://api.github.com/repos/KDE/krita/ta
 def fetch_versions(ctx):
     descriptor = _fetch_tags(ctx)
     descriptor["version_filter"] = "numeric"
+    # KDE's tag is published before the matching stable download directory.
+    # Keep the version hidden until the official assets exist.
+    descriptor["exclude_versions"] = ["6.0.5"]
     return descriptor
 
 def download_url(ctx, version):
