@@ -242,7 +242,7 @@ impl<'a> ResolveStage<'a> {
             return None;
         }
 
-        let executable = find_rustup_executable(&request.runtime_name)?;
+        let executable = find_rustup_executable(&request.runtime_name, &working_dir)?;
 
         debug!(
             "[ResolveStage] {} is rustup-managed ({}); delegating to {}",

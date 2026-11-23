@@ -30,6 +30,7 @@
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 /// Modern toolchain declaration file (`rust-toolchain.toml`).
 pub const RUST_TOOLCHAIN_TOML: &str = "rust-toolchain.toml";
@@ -62,12 +63,46 @@ pub fn executable_for(runtime: &str) -> &str {
     }
 }
 
-/// Locate the system executable for a Rust runtime (`rustup`, `cargo`, `rustc`, ...).
+/// Locate the executable for a Rust runtime owned by rustup (`rustup`, `cargo`,
+/// `rustc`, ...).
 ///
-/// Returns `None` when rustup is not installed — the caller decides whether that is an
-/// error (a repository with a toolchain file) or a reason to fall back to vx's store.
-pub fn find_rustup_executable(runtime: &str) -> Option<PathBuf> {
-    which::which(executable_for(runtime)).ok()
+/// `vx cargo` adds its own Rust store to `PATH`, so looking up `cargo` directly
+/// can select a VX-managed binary even though the repository has delegated Rust
+/// to rustup. Ask rustup to resolve the executable from the request's working
+/// directory, which preserves rustup's toolchain-file and environment precedence.
+///
+/// When the selected toolchain does not contain the requested component yet,
+/// fall back to the rustup shim next to `rustup.exe`. The shim can report the
+/// normal rustup component error without handing ownership back to VX.
+pub fn find_rustup_executable(runtime: &str, working_dir: &Path) -> Option<PathBuf> {
+    let executable = executable_for(runtime);
+    let rustup = which::which("rustup").ok()?;
+
+    if executable == "rustup" {
+        return Some(rustup);
+    }
+
+    if let Ok(output) = Command::new(&rustup)
+        .args(["which", executable])
+        .current_dir(working_dir)
+        .output()
+        && output.status.success()
+    {
+        let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        if !path.is_empty() {
+            return Some(PathBuf::from(path));
+        }
+    }
+
+    let shim_name = if cfg!(windows) {
+        format!("{executable}.exe")
+    } else {
+        executable.to_string()
+    };
+    rustup
+        .parent()
+        .map(|parent| parent.join(shim_name))
+        .filter(|path| path.is_file())
 }
 
 /// Where a Rust toolchain override came from.
