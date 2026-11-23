@@ -18,13 +18,15 @@ try {
   "Working directory: $repoDir" | Tee-Object -FilePath $logFile -Append
 
   vx --version | Tee-Object -FilePath $logFile -Append
-  vx npm --version | Tee-Object -FilePath $logFile -Append
+  # node-pty currently declares devEngines.runtime >=24. Keep this example
+  # independent from the repository's default Node 22 project pin.
+  vx npm@24 --version | Tee-Object -FilePath $logFile -Append
 
-  vx npm install --build-from-source 2>&1 | Tee-Object -FilePath $logFile -Append
+  vx npm@24 install --build-from-source 2>&1 | Tee-Object -FilePath $logFile -Append
 
-  vx npm rebuild --build-from-source 2>&1 | Tee-Object -FilePath $logFile -Append
+  vx npm@24 rebuild --build-from-source 2>&1 | Tee-Object -FilePath $logFile -Append
 
-  vx node -e "require('./'); console.log('node-pty load OK')" 2>&1 | Tee-Object -FilePath $logFile -Append
+  vx node@24 -e "require('./'); console.log('node-pty load OK')" 2>&1 | Tee-Object -FilePath $logFile -Append
 
   "node-pty test passed" | Tee-Object -FilePath $logFile -Append
 }
