@@ -9,7 +9,12 @@ import sys
 
 EXPECTED_BASE_REF = "main"
 EXPECTED_HEAD_PREFIX = "release-please--"
-EXPECTED_AUTHORS = frozenset(("github-actions[bot]", "release-please[bot]"))
+# The repository may be configured so the Actions token cannot open a PR.
+# Keep the release branch and file contract strict while allowing the
+# repository maintainer to create the release PR manually in that case.
+EXPECTED_AUTHORS = frozenset(
+    ("github-actions[bot]", "release-please[bot]", "loonghao")
+)
 REQUIRED_FILES = frozenset(
     (
         ".release-please-manifest.json",
