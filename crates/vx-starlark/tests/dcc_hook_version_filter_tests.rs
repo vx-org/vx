@@ -97,6 +97,24 @@ async fn test_calendar_release_prerelease_suffixes_are_excluded() {
     );
 }
 
+#[tokio::test]
+async fn test_exact_versions_are_excluded() {
+    let url = json_server(r#"[{"name":"v6.0.5"},{"name":"v6.0.4.1"}]"#);
+    let provider = provider(
+        &url,
+        "descriptor[\"version_filter\"] = \"numeric\"\n    descriptor[\"exclude_versions\"] = [\"6.0.5\"]",
+    )
+    .await;
+    let versions = provider
+        .fetch_versions()
+        .await
+        .expect("fetch stable releases");
+    assert_eq!(
+        versions.into_iter().map(|v| v.version).collect::<Vec<_>>(),
+        ["6.0.4.1"]
+    );
+}
+
 #[rstest]
 #[case("17")]
 #[case("[17]")]

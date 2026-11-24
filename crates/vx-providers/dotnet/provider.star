@@ -1,3 +1,5 @@
+load("@vx//stdlib:rez.star", "rez_bundle_source")
+
 # provider.star - .NET SDK provider
 #
 # .NET SDK downloads from Microsoft CDN
@@ -112,3 +114,21 @@ def deps(_ctx, _version):
         dep_def("nuget", optional = True,
                 reason = "NuGet CLI for advanced package management"),
     ]
+# ---------------------------------------------------------------------------
+# Rez Next SDK provider descriptor
+#
+# The descriptor is ready for the provider's immutable Rez bundle release.
+# Existing provider installation remains authoritative until that release is
+# published, keeping migration independent from bundle publication order.
+# ---------------------------------------------------------------------------
+
+_REZ_SDK = rez_bundle_source(
+    "vx-org",
+    "vx-rez-packages",
+    "dotnet",
+    published = False,
+)
+rez_fetch_versions = _REZ_SDK["fetch_versions"]
+rez_download_url = _REZ_SDK["download_url"]
+rez_install_layout = _REZ_SDK["install_layout"]
+rez_bundle = _REZ_SDK["rez_bundle"]

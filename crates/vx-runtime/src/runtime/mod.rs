@@ -1191,6 +1191,33 @@ pub trait Runtime: Send + Sync {
     /// - "~1.0.0" -> latest patch version
     /// - "3.11.*" -> latest 3.11.x version
     async fn resolve_version(&self, version: &str, ctx: &RuntimeContext) -> Result<String> {
+        // An exact version that is already in the local store needs no remote
+        // index. Immutable bundle distributions are published per version, so
+        // requiring a network round-trip for an installed version would make
+        // offline reuse impossible.
+        let mut components = Path::new(version).components();
+        let is_exact_local_candidate = version != "latest"
+            && !version.contains(['*', '<', '>', '=', '~', '^', ','])
+            && matches!(
+                (components.next(), components.next()),
+                (Some(std::path::Component::Normal(_)), None)
+            );
+        // `is_installed` may intentionally report system-managed tools as present.
+        // That result cannot prove that this exact version exists in the vx store,
+        // which is the only local source that can satisfy an exact offline request.
+        let store_dir = ctx.paths.version_store_dir(self.store_name(), version);
+        let platform_store_dir = store_dir.join(Platform::current().as_str());
+        let is_exact_version_in_store =
+            ctx.fs.exists(&store_dir) || ctx.fs.exists(&platform_store_dir);
+        if is_exact_local_candidate && is_exact_version_in_store {
+            tracing::debug!(
+                runtime = self.name(),
+                version,
+                "resolved exact version from the local store without a remote index"
+            );
+            return Ok(version.to_string());
+        }
+
         let versions = self.fetch_versions(ctx).await?;
 
         let resolver = VersionResolver::new();

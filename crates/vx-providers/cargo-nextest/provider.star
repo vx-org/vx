@@ -1,3 +1,5 @@
+load("@vx//stdlib:rez.star", "rez_bundle_source")
+
 load("@vx//stdlib:provider.star", "runtime_def", "github_permissions", "fetch_versions_with_tag_prefix")
 load("@vx//stdlib:provider_templates.star", "github_rust_provider")
 load("@vx//stdlib:github.star", "github_asset_url")
@@ -77,3 +79,21 @@ system_install = cross_platform_install(
     macos   = "cargo-nextest",
     linux   = "cargo-nextest",
 )
+# ---------------------------------------------------------------------------
+# Rez Next SDK provider descriptor
+#
+# The descriptor is ready for the provider's immutable Rez bundle release.
+# Existing provider installation remains authoritative until that release is
+# published, keeping migration independent from bundle publication order.
+# ---------------------------------------------------------------------------
+
+_REZ_SDK = rez_bundle_source(
+    "vx-org",
+    "vx-rez-packages",
+    "cargo-nextest",
+    published = False,
+)
+rez_fetch_versions = _REZ_SDK["fetch_versions"]
+rez_download_url = _REZ_SDK["download_url"]
+rez_install_layout = _REZ_SDK["install_layout"]
+rez_bundle = _REZ_SDK["rez_bundle"]

@@ -132,6 +132,54 @@ async fn test_duckdb_download_url_linux() {
 }
 
 #[tokio::test]
+async fn test_duckdb_v2_uses_current_unix_asset_name() {
+    let (star_path, content) = load_provider_content("duckdb");
+    let engine = StarlarkEngine::new();
+    let mut ctx = vx_starlark::ProviderContext::new("duckdb", std::env::temp_dir().join("vx-test"));
+    ctx.platform.os = "linux".to_string();
+    ctx.platform.arch = "x64".to_string();
+
+    let url = engine
+        .call_function(
+            &star_path,
+            &content,
+            "download_url",
+            &ctx,
+            &[serde_json::json!("2.0.1")],
+        )
+        .expect("resolve DuckDB 2 URL");
+
+    assert_eq!(
+        url.as_str().unwrap(),
+        "https://github.com/duckdb/duckdb/releases/download/v2.0.1/duckdb-cli-linux-amd64.tar.gz"
+    );
+}
+
+#[tokio::test]
+async fn test_duckdb_v2_uses_current_windows_asset_name() {
+    let (star_path, content) = load_provider_content("duckdb");
+    let engine = StarlarkEngine::new();
+    let mut ctx = vx_starlark::ProviderContext::new("duckdb", std::env::temp_dir().join("vx-test"));
+    ctx.platform.os = "windows".to_string();
+    ctx.platform.arch = "x64".to_string();
+
+    let url = engine
+        .call_function(
+            &star_path,
+            &content,
+            "download_url",
+            &ctx,
+            &[serde_json::json!("2.0.1")],
+        )
+        .expect("resolve DuckDB 2 URL");
+
+    assert_eq!(
+        url.as_str().unwrap(),
+        "https://github.com/duckdb/duckdb/releases/download/v2.0.1/duckdb-cli-windows-amd64.zip"
+    );
+}
+
+#[tokio::test]
 async fn test_duckdb_install_layout() {
     let (star_path, content) = load_provider_content("duckdb");
     let engine = StarlarkEngine::new();

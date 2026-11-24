@@ -1,3 +1,5 @@
+load("@vx//stdlib:rez.star", "rez_bundle_source")
+
 # provider.star - ImageMagick provider
 #
 # Linux x86_64: AppImage binary from GitHub releases
@@ -145,3 +147,21 @@ def uninstall(ctx, _version):
         }
     # Linux: AppImage stored in vx store — let default directory removal handle it
     return False
+# ---------------------------------------------------------------------------
+# Rez Next SDK provider descriptor
+#
+# The descriptor is ready for the provider's immutable Rez bundle release.
+# Existing provider installation remains authoritative until that release is
+# published, keeping migration independent from bundle publication order.
+# ---------------------------------------------------------------------------
+
+_REZ_SDK = rez_bundle_source(
+    "vx-org",
+    "vx-rez-packages",
+    "imagemagick",
+    published = False,
+)
+rez_fetch_versions = _REZ_SDK["fetch_versions"]
+rez_download_url = _REZ_SDK["download_url"]
+rez_install_layout = _REZ_SDK["install_layout"]
+rez_bundle = _REZ_SDK["rez_bundle"]

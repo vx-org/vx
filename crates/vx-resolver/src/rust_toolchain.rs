@@ -62,12 +62,42 @@ pub fn executable_for(runtime: &str) -> &str {
     }
 }
 
-/// Locate the system executable for a Rust runtime (`rustup`, `cargo`, `rustc`, ...).
+/// Locate the executable for a Rust runtime owned by rustup (`rustup`, `cargo`,
+/// `rustc`, ...).
 ///
-/// Returns `None` when rustup is not installed — the caller decides whether that is an
-/// error (a repository with a toolchain file) or a reason to fall back to vx's store.
+/// Return the rustup proxy next to `rustup` so toolchain arguments such as
+/// `+nightly` and repository overrides are interpreted by rustup itself.
 pub fn find_rustup_executable(runtime: &str) -> Option<PathBuf> {
-    which::which(executable_for(runtime)).ok()
+    let executable = executable_for(runtime);
+    let rustup = find_external_rustup()?;
+
+    if executable == "rustup" {
+        return Some(rustup);
+    }
+
+    let shim_name = if cfg!(windows) {
+        format!("{executable}.exe")
+    } else {
+        executable.to_string()
+    };
+    rustup
+        .parent()
+        .map(|parent| parent.join(shim_name))
+        .filter(|path| path.is_file())
+}
+
+/// Find rustup outside VX-managed directories.
+///
+/// Resolver subprocesses can inherit a PATH with the active VX store before the
+/// user's normal PATH. A toolchain file delegates ownership to rustup, so choosing
+/// that store copy would make the delegation point back into VX.
+fn find_external_rustup() -> Option<PathBuf> {
+    let vx_home = vx_paths::VxPaths::new().ok()?.base_dir;
+    let path = std::env::var_os("PATH")?;
+
+    std::env::split_paths(&path)
+        .filter(|directory| !directory.starts_with(&vx_home))
+        .find_map(|directory| which::which_in("rustup", Some(directory), ".").ok())
 }
 
 /// Where a Rust toolchain override came from.

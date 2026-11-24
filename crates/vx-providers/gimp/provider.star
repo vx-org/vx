@@ -1,3 +1,5 @@
+load("@vx//stdlib:rez.star", "rez_bundle_source")
+
 # GIMP publishes platform installers rather than a Windows portable archive.
 # Delegate installation to the OS manager and discover its real executable.
 load("@vx//stdlib:provider.star", "runtime_def", "system_permissions")
@@ -59,3 +61,21 @@ system_install = system_install_strategies([
     pkg_strategy("brew", "gimp", install_args = "--cask", platforms = ["macos"]),
     apt_install("gimp"), dnf_install("gimp"), pacman_install("gimp"),
 ])
+# ---------------------------------------------------------------------------
+# Rez Next SDK provider descriptor
+#
+# The descriptor is ready for the provider's immutable Rez bundle release.
+# Existing provider installation remains authoritative until that release is
+# published, keeping migration independent from bundle publication order.
+# ---------------------------------------------------------------------------
+
+_REZ_SDK = rez_bundle_source(
+    "vx-org",
+    "vx-rez-packages",
+    "gimp",
+    published = False,
+)
+rez_fetch_versions = _REZ_SDK["fetch_versions"]
+rez_download_url = _REZ_SDK["download_url"]
+rez_install_layout = _REZ_SDK["install_layout"]
+rez_bundle = _REZ_SDK["rez_bundle"]
