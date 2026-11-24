@@ -138,6 +138,26 @@ async fn missing_exact_version_still_requires_the_remote_index() {
     );
 }
 
+/// A system-managed tool can be present without providing the requested exact
+/// version, so system presence must not bypass the remote version lookup.
+#[tokio::test]
+async fn system_presence_does_not_satisfy_an_exact_local_version() {
+    let fixture = offline_fixture();
+    let system_executable = fixture._temp.path().join("system-tool");
+    std::fs::write(&system_executable, b"system tool").expect("system executable should exist");
+    let runtime = offline_runtime("offline-tool")
+        .with_system_paths(vec![system_executable.to_string_lossy().into_owned()]);
+
+    let err = Runtime::resolve_version(&runtime, "9.9.9", &fixture.ctx)
+        .await
+        .expect_err("system presence must not satisfy an exact version");
+
+    assert!(
+        err.to_string().contains("remote index is unreachable"),
+        "the failure should come from the version fetch, got: {err}"
+    );
+}
+
 /// Version specs that are not exact pins must always consult the index.
 #[rstest]
 #[case("latest")]

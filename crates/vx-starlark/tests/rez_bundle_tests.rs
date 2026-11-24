@@ -2,11 +2,13 @@
 
 use std::io::{Read, Write};
 use std::net::TcpListener;
+use std::sync::Arc;
 use std::thread;
 
 use rstest::rstest;
+use vx_runtime::{ExecutionContext, RealCommandExecutor};
 use vx_starlark::context::PlatformInfo;
-use vx_starlark::{ProviderContext, StarlarkEngine, StarlarkProvider};
+use vx_starlark::{ProviderContext, StarlarkEngine, StarlarkProvider, build_runtimes};
 
 const PROVIDER_SOURCE: &str = r#"
 load("@vx//stdlib:rez.star", "rez_bundle_source")
@@ -349,6 +351,15 @@ async fn discovers_only_complete_tool_releases_from_github_metadata() {
             ]
         },
         {
+            "tag_name": "rust-1.9.0",
+            "prerelease": false,
+            "published_at": "2026-04-15T00:00:00Z",
+            "assets": [
+                {"name": "index.json"},
+                {"name": "rust-1.90.0-x86_64-pc-windows-msvc.rez.tar.zst"}
+            ]
+        },
+        {
             "tag_name": "rust-1.94.0",
             "prerelease": false,
             "assets": [{"name": "index.json"}]
@@ -376,6 +387,35 @@ async fn discovers_only_complete_tool_releases_from_github_metadata() {
     assert_eq!(
         versions[0].date.as_deref(),
         Some("2026-04-16T00:00:00+00:00")
+    );
+}
+
+#[tokio::test]
+async fn legacy_provider_runtime_keeps_the_rez_bundle_bridge() {
+    let source = r#"
+name = "legacy"
+
+def rez_bundle(_ctx, _version):
+    return {"unexpected": True}
+"#;
+    let runtime = build_runtimes("legacy", source, None::<String>)
+        .into_iter()
+        .next()
+        .expect("legacy providers should receive a fallback runtime");
+
+    let error = runtime
+        .prepare_execution(
+            "1.0.0",
+            &ExecutionContext::new(Arc::new(RealCommandExecutor)),
+        )
+        .await
+        .expect_err("the fallback runtime should call the Rez bundle hook");
+
+    assert!(
+        error
+            .to_string()
+            .contains("rez_bundle() must return a rez_bundle_request descriptor"),
+        "unexpected error: {error}"
     );
 }
 

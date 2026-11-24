@@ -154,6 +154,15 @@ pub fn build_runtimes(
             provider_name.to_string(),
         ));
 
+        // Providers without an explicit runtimes list still expose the provider
+        // name as their runtime. Keep the Rez bundle activation hook on this
+        // compatibility path as well.
+        rt = rt.with_rez_bundle_fn(make_rez_bundle_fn(
+            Arc::clone(&provider_name),
+            Arc::clone(&content),
+            provider_name.to_string(),
+        ));
+
         return vec![Arc::new(rt)];
     }
 

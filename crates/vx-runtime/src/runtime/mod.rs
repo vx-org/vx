@@ -1202,7 +1202,14 @@ pub trait Runtime: Send + Sync {
                 (components.next(), components.next()),
                 (Some(std::path::Component::Normal(_)), None)
             );
-        if is_exact_local_candidate && self.is_installed(version, ctx).await? {
+        // `is_installed` may intentionally report system-managed tools as present.
+        // That result cannot prove that this exact version exists in the vx store,
+        // which is the only local source that can satisfy an exact offline request.
+        let store_dir = ctx.paths.version_store_dir(self.store_name(), version);
+        let platform_store_dir = store_dir.join(Platform::current().as_str());
+        let is_exact_version_in_store =
+            ctx.fs.exists(&store_dir) || ctx.fs.exists(&platform_store_dir);
+        if is_exact_local_candidate && is_exact_version_in_store {
             tracing::debug!(
                 runtime = self.name(),
                 version,

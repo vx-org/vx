@@ -51,6 +51,35 @@ impl Runtime for BundledRuntime {
     }
 }
 
+struct PreparationOnlyRuntime;
+
+#[async_trait]
+impl Runtime for PreparationOnlyRuntime {
+    fn name(&self) -> &str {
+        "wrapped"
+    }
+
+    fn executable_name(&self) -> &str {
+        "wrapped"
+    }
+
+    async fn fetch_versions(&self, _ctx: &RuntimeContext) -> Result<Vec<VersionInfo>> {
+        Ok(vec![VersionInfo::new("1.0.0")])
+    }
+
+    async fn prepare_execution(
+        &self,
+        _version: &str,
+        _ctx: &ExecutionContext,
+    ) -> Result<ExecutionPrep> {
+        Ok(ExecutionPrep {
+            command_prefix: vec!["tool".to_string(), "run".to_string()],
+            proxy_ready: true,
+            ..Default::default()
+        })
+    }
+}
+
 struct CountingRuntime {
     name: &'static str,
     executable: &'static str,
@@ -209,6 +238,28 @@ async fn prepare_stage_uses_runtime_executable_name_for_system_path_fallback() {
         .expect("prepare stage should resolve bundled runtime via executable name");
 
     assert_eq!(prepared.executable, mock_executable);
+    assert_eq!(prepared.command_prefix, vec!["tool", "run"]);
+}
+
+#[tokio::test]
+async fn prepare_stage_preserves_preparation_prefix_for_direct_executables() {
+    let config = ResolverConfig::default();
+    let resolver = Resolver::new(config.clone(), RuntimeMap::empty()).expect("resolver builds");
+    let registry = ProviderRegistry::new();
+    registry.register(Arc::new(TestProvider {
+        runtimes: vec![Arc::new(PreparationOnlyRuntime)],
+    }));
+    let stage = PrepareStage::new(&resolver, &config, Some(&registry), None);
+    let plan = ExecutionPlan::new(
+        PlannedRuntime::installed("wrapped", "1.0.0".to_string(), PathBuf::from("tool")),
+        ExecutionConfig::default(),
+    );
+
+    let prepared = stage
+        .execute(plan)
+        .await
+        .expect("direct executable preparation should succeed");
+
     assert_eq!(prepared.command_prefix, vec!["tool", "run"]);
 }
 

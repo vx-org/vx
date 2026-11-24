@@ -1098,9 +1098,11 @@ impl StarlarkProvider {
                             .filter_map(|asset| asset.get("name")?.as_str())
                             .collect();
                         let has_index = names.contains(&"index.json");
-                        let has_bundle = names
-                            .iter()
-                            .any(|name| name.starts_with(tag) && name.ends_with(".rez.tar.zst"));
+                        let has_bundle = names.iter().any(|name| {
+                            name.strip_prefix(tag)
+                                .is_some_and(|suffix| suffix.starts_with('-'))
+                                && name.ends_with(".rez.tar.zst")
+                        });
                         if !has_index || !has_bundle {
                             return None;
                         }

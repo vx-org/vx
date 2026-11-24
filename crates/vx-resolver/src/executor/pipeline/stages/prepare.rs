@@ -308,19 +308,23 @@ impl<'a> Stage<ExecutionPlan, PreparedExecution> for PrepareStage<'a> {
             let exe_stem = exe.file_stem().and_then(|s| s.to_str()).unwrap_or("");
             let runtime_name = &plan.primary.name;
 
+            let command_prefix = prepared_command_prefix
+                .clone()
+                .unwrap_or_else(|| plan.primary.command_prefix.clone());
+
             if exe_stem.eq_ignore_ascii_case(runtime_name) {
                 // Normal case: executable matches runtime name
-                (exe, plan.primary.command_prefix.clone())
-            } else if !plan.primary.command_prefix.is_empty() {
+                (exe, command_prefix)
+            } else if !command_prefix.is_empty() {
                 // Command prefix runtimes (e.g., bunx -> bun x) are expected to have
                 // a different executable name, so this is fine.
                 debug!(
                     "[PrepareStage] Executable {} has prefix {:?} for runtime {}",
                     exe.display(),
-                    plan.primary.command_prefix,
+                    command_prefix,
                     runtime_name
                 );
-                (exe, plan.primary.command_prefix.clone())
+                (exe, command_prefix)
             } else {
                 // Mismatch without command_prefix.
                 //
@@ -342,7 +346,7 @@ impl<'a> Stage<ExecutionPlan, PreparedExecution> for PrepareStage<'a> {
                         exe_stem,
                         runtime_name
                     );
-                    (exe, plan.primary.command_prefix.clone())
+                    (exe, command_prefix)
                 } else {
                     // Case B: bare name — executable_override was not found.
                     tracing::warn!(
@@ -413,27 +417,20 @@ fn prepend_environment_path(
         .keys()
         .find(|key| key.eq_ignore_ascii_case("PATH"))
         .cloned();
-    let separator = if cfg!(windows) { ";" } else { ":" };
-    let prepended = entries
-        .iter()
-        .map(|entry| {
-            entry
-                .to_str()
-                .map(str::to_string)
-                .ok_or_else(|| format!("non-UTF-8 PATH entry: {}", entry.display()))
-        })
-        .collect::<Result<Vec<_>, String>>()?
-        .join(separator);
-
-    let (key, value) = match key {
-        Some(ref key) => match environment.remove(key) {
-            Some(existing) if !existing.is_empty() => {
-                (key.clone(), format!("{prepended}{separator}{existing}"))
-            }
-            _ => (key.clone(), prepended),
-        },
-        None => ("PATH".to_string(), prepended),
-    };
+    let existing = key
+        .as_ref()
+        .and_then(|path_key| environment.get(path_key))
+        .filter(|value| !value.is_empty());
+    let mut paths = entries.to_vec();
+    if let Some(existing) = existing {
+        paths.extend(std::env::split_paths(std::ffi::OsStr::new(existing)));
+    }
+    let value = std::env::join_paths(paths)
+        .map_err(|error| format!("failed to construct PATH: {error}"))?
+        .into_string()
+        .map_err(|_| "PATH contains a non-UTF-8 entry".to_string())?;
+    let key = key.unwrap_or_else(|| "PATH".to_string());
+    environment.remove(&key);
     environment.insert(key, value);
     Ok(())
 }

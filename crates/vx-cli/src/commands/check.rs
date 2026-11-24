@@ -192,7 +192,7 @@ pub async fn handle(
                     // rustup owns this toolchain, so "absent from the vx store" is the
                     // expected state — but rustup itself still has to be reachable, or
                     // the tool resolves to nothing at run time.
-                    if find_rustup_executable(name, project_root).is_none() {
+                    if find_rustup_executable(name).is_none() {
                         tool_errors.push(format!(
                             "{} is owned by rustup ({}) but no '{}' was found on PATH. \
                              Install rustup from https://rustup.rs/.",
