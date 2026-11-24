@@ -115,6 +115,11 @@ jobs:
       - id: plan
         run: |
           dist host --steps=create --tag=${{ steps.tag.outputs.tag }} --output-format=json > plan-dist-manifest.json
+          # cargo-dist 0.30.3 emits the retired macos-14 label for Apple
+          # Silicon. Map that target to the current arm64 macOS runner before
+          # the matrix is materialized.
+          jq '(.ci.github.artifacts_matrix.include[] | select(.host == "aarch64-apple-darwin")).runner = "macos-15"' plan-dist-manifest.json > plan-dist-manifest.json.tmp
+          mv plan-dist-manifest.json.tmp plan-dist-manifest.json
           echo "dist ran successfully"
           cat plan-dist-manifest.json
           echo "manifest=$(jq -c "." plan-dist-manifest.json)" >> "$GITHUB_OUTPUT"
