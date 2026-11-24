@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.9.39](https://github.com/vx-org/vx/compare/v0.9.38...v0.9.39) (2026-11-24)
+
+
+### Bug Fixes
+
+* update Apple Silicon release runner ([4c2e8ef](https://github.com/vx-org/vx/commit/4c2e8ef9cf118775a954555c7bed4ecdb7964e88))
+
 ## [0.9.38](https://github.com/vx-org/vx/compare/v0.9.37...v0.9.38) (2026-11-24)
 
 
